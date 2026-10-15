@@ -1,0 +1,58 @@
+name: Stillpoint
+options:
+  bundleIdPrefix: com.yourco
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+packages:
+  StillpointModel:
+    path: Packages/StillpointModel
+  StillpointUI:
+    path: Packages/StillpointUI
+  StillpointFeatures:
+    path: Packages/StillpointFeatures
+targets:
+  Stillpoint:
+    type: application
+    platform: macOS
+    sources: [App]
+    dependencies:
+      - package: StillpointModel
+      - package: StillpointUI
+      - package: StillpointFeatures
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourco.stillpoint
+        PRODUCT_NAME: Stillpoint
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Stillpoint
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Stillpoint is free software under the GPL-3.0."
+        CODE_SIGN_ENTITLEMENTS: App/Stillpoint.entitlements
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: YES
+  StillpointTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [AppTests]
+    dependencies:
+      - target: Stillpoint
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+schemes:
+  Stillpoint:
+    build:
+      targets:
+        Stillpoint: all
+    test:
+      targets: [StillpointTests]
