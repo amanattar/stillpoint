@@ -11,7 +11,8 @@ public struct ModelEnvironment: Sendable {
 
     public init(
         now: @escaping @Sendable () -> Date = { Date() },
-        calendar: Calendar = .current,
+        // Autoupdating so a time-zone change while the app runs moves "today" with it.
+        calendar: Calendar = .autoupdatingCurrent,
         deviceID: String,
         assertOnRuleViolation: Bool = false
     ) {

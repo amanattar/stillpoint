@@ -57,7 +57,13 @@ struct ListQueries {
         if let tagFilter {
             content = try filter(content, byTag: tagFilter)
         }
-        content.tagIDsByItem = try tagIDs(for: content.allItems + content.later + content.logged)
+        let everything = content.allItems + content.later + content.logged
+        content.tagIDsByItem = try tagIDs(for: everything)
+        let tagIDs = Set(content.tagIDsByItem.values.joined())
+        content.tagTitles = Dictionary(uniqueKeysWithValues: try Tag.fetchAll(db, keys: tagIDs).map { ($0.id, $0.title) })
+        content.parentTitles = try parentTitles(for: everything)
+        content.checklists = try checklists(for: everything.filter { $0.kind == .todo })
+        content.projectProgress = try projectProgress(for: everything.filter { $0.kind == .project }.map(\.id))
         return content
     }
 
@@ -425,6 +431,41 @@ struct ListQueries {
         var result: [String: [String]] = [:]
         for row in rows {
             result[row["itemID"], default: []].append(row["tagID"])
+        }
+        return result
+    }
+
+    // MARK: Row details
+
+    private func parentTitles(for items: [Item]) throws -> [String: String] {
+        let projectIDs = Set(items.compactMap(\.projectID))
+        let areaIDs = Set(items.compactMap(\.areaID))
+        var titles: [String: String] = [:]
+        for project in try Item.fetchAll(db, keys: projectIDs) { titles[project.id] = project.title }
+        for area in try Area.fetchAll(db, keys: areaIDs) { titles[area.id] = area.title }
+        var result: [String: String] = [:]
+        for item in items {
+            if let parent = (item.projectID ?? item.areaID).flatMap({ titles[$0] }) {
+                result[item.id] = parent
+            }
+        }
+        return result
+    }
+
+    private func checklists(for todos: [Item]) throws -> [String: ChecklistProgress] {
+        guard !todos.isEmpty else { return [:] }
+        let rows = try Row.fetchAll(
+            db,
+            sql: """
+            SELECT itemID, COUNT(*) AS total, SUM(isDone) AS done FROM checklist_item
+            WHERE deletedAt IS NULL AND itemID IN (SELECT value FROM json_each(?))
+            GROUP BY itemID
+            """,
+            arguments: [jsonArray(Set(todos.map(\.id)))]
+        )
+        var result: [String: ChecklistProgress] = [:]
+        for row in rows {
+            result[row["itemID"]] = ChecklistProgress(done: row["done"], total: row["total"])
         }
         return result
     }
