@@ -1450,7 +1450,7 @@ struct RulesTests {
     /// Seeds project "P", project "Q" and heading "H" (in Q), then expects `build` to be rejected.
     func expectViolation(_ build: @escaping @Sendable (Transaction) throws -> Item) async throws {
         let h = try TestHarness()
-        try await h.store.perform("seed") { tx in
+        _ = try await h.store.perform("seed") { tx in
             let p = Item(id: "P", kind: .project, title: "P", createdAt: tx.now, bucket: .anytime, sortKey: "V")
             let q = Item(id: "Q", kind: .project, title: "Q", createdAt: tx.now, bucket: .anytime, sortKey: "W")
             var heading = Item(id: "H", kind: .heading, title: "H", createdAt: tx.now, bucket: .anytime, sortKey: "X")
@@ -1546,7 +1546,7 @@ struct RulesTests {
 
     @Test func validWritesPass() async throws {
         let h = try TestHarness()
-        try await h.store.perform("valid") { tx in
+        _ = try await h.store.perform("valid") { tx in
             let project = Item(id: "P", kind: .project, createdAt: tx.now, bucket: .anytime, sortKey: "V")
             var heading = Item(id: "H", kind: .heading, createdAt: tx.now, bucket: .anytime, sortKey: "W")
             heading.projectID = "P"
@@ -4405,7 +4405,7 @@ struct PerformanceTests {
         let projectIDs = try await (0..<50).asyncMap { i in
             try await h.store.createProject(title: "Project \(i)", areaID: areaIDs[i % 5]).value
         }
-        try await h.store.perform("seed") { tx in
+        _ = try await h.store.perform("seed") { tx in
             let keys = SortKey.sequence(count: 10_000, after: nil, before: nil)
             for i in 0..<10_000 {
                 var item = Item(id: tx.newID(), kind: .todo, title: "Item \(i)", createdAt: tx.now, bucket: .anytime, sortKey: keys[i])
