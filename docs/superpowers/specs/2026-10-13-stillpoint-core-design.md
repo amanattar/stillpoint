@@ -78,6 +78,8 @@ Stillpoint/
 
   Every write goes through a command, which validates the rules (§4.3), writes rows and change-log entries in one transaction, and returns an `UndoStep`.
 - `StillpointUI` depends on nothing but SwiftUI. It holds design tokens and leaf views: checkbox, tag pill, progress pie, date badge, sidebar row.
+- `StillpointFeatures` (added in Plan 2) depends on `StillpointModel` and `StillpointUI`. It holds screen-level logic and views: date wording, the row display model, list and sidebar screens, and demo data. It's a package rather than part of the app target for two reasons: its snapshot tests run with `swift test` outside the app sandbox, and the iPhone and iPad apps can reuse it.
+- **Sandbox:** the Mac app is sandboxed from the start. Its database lives at `~/Library/Containers/com.yourco.stillpoint/Data/Library/Application Support/Stillpoint/Stillpoint.sqlite`.
 - **The app target** composes the two. Its task list is an `NSTableView` subclass hosted in SwiftUI through `NSViewRepresentable`, with cell content rendered by SwiftUI views from `StillpointUI` via `NSHostingView`. Everything else (window, sidebar, toolbar, popovers, settings) is SwiftUI.
 
 ## 4. Data model
