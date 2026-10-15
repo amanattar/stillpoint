@@ -8,4 +8,6 @@ public enum ModelError: Error, Equatable, Sendable {
     case headingHasOpenItems(count: Int)
     case duplicateShortcut(String)
     case invalidMove(String)
+    /// Undoing this step would leave data that breaks the rules (later edits depend on it).
+    case undoConflict
 }

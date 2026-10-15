@@ -45,7 +45,7 @@ extension Store {
 
             let keys: [String]
             if afterID != nil || beforeID != nil {
-                keys = try tx.keysBetween(moved.count, column: .sortKey, after: afterID, before: beforeID)
+                keys = try tx.keysBetween(moved.count, column: .sortKey, after: afterID, before: beforeID, moving: ids)
             } else if let first = moved.first {
                 keys = try tx.newKeys(moved.count, in: Container.of(first))
             } else {
@@ -69,7 +69,10 @@ extension Store {
     @discardableResult
     public func reorder(_ ids: [String], after afterID: String?, before beforeID: String?, column: OrderColumn = .sortKey) async throws -> Committed<Void> {
         try await perform("Move") { tx in
-            let keys = try tx.keysBetween(ids.count, column: column, after: afterID, before: beforeID)
+            if column == .todaySortKey {
+                try Store.assignMissingTodayKeys(in: tx)
+            }
+            let keys = try tx.keysBetween(ids.count, column: column, after: afterID, before: beforeID, moving: ids)
             for (index, var item) in try tx.items(ids).enumerated() {
                 switch column {
                 case .sortKey: item.sortKey = keys[index]
@@ -77,6 +80,26 @@ extension Store {
                 }
                 try tx.save(item)
             }
+        }
+    }
+
+    /// Items that reached Today by date or deadline have no Today order yet
+    /// (they display last, by start day). Give them keys in that displayed
+    /// order so a drag next to them has real neighbours.
+    static func assignMissingTodayKeys(in tx: Transaction) throws {
+        let unkeyed = try Item.fetchAll(
+            tx.db,
+            sql: """
+            SELECT * FROM item WHERE deletedAt IS NULL AND trashedAt IS NULL AND kind IN (0, 1)
+              AND todaySortKey IS NULL AND ((bucket = 1 AND startDay <= ?) OR deadlineDay <= ?)
+            ORDER BY startDay, sortKey
+            """,
+            arguments: [tx.today, tx.today]
+        )
+        let keys = try tx.newKeys(unkeyed.count, column: .todaySortKey, in: .today)
+        for (index, var item) in unkeyed.enumerated() {
+            item.todaySortKey = keys[index]
+            try tx.save(item)
         }
     }
 

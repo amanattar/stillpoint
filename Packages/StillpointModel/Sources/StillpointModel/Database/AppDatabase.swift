@@ -28,12 +28,13 @@ public enum AppDatabase {
     static func open(at url: URL, backups: BackupManager, now: Date, migrator: DatabaseMigrator) throws -> DatabasePool {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let existed = FileManager.default.fileExists(atPath: url.path)
-        if existed, !passesIntegrityCheck(url) {
+        if existed, try !passesIntegrityCheck(url) {
             let movedTo = url.deletingLastPathComponent()
                 .appendingPathComponent("corrupt-\(BackupManager.stamp(now))-\(url.lastPathComponent)")
             try FileManager.default.moveItem(at: url, to: movedTo)
-            for suffix in ["-wal", "-shm"] {
-                try? FileManager.default.removeItem(atPath: url.path + suffix)
+            // Keep the WAL and SHM next to the moved file: they may hold recent edits.
+            for suffix in ["-wal", "-shm"] where FileManager.default.fileExists(atPath: url.path + suffix) {
+                try FileManager.default.moveItem(atPath: url.path + suffix, toPath: movedTo.path + suffix)
             }
             throw DatabaseOpenError.corrupted(movedTo: movedTo, newestBackup: try backups.backups().first)
         }
@@ -54,13 +55,15 @@ public enum AppDatabase {
         return pool
     }
 
-    private static func passesIntegrityCheck(_ url: URL) -> Bool {
+    /// False only for real corruption. Other failures (permissions, a locked
+    /// or busy file) are rethrown: moving a healthy database aside would hide the user's data.
+    private static func passesIntegrityCheck(_ url: URL) throws -> Bool {
         do {
             let queue = try DatabaseQueue(path: url.path)
             defer { try? queue.close() }
             let result = try queue.read { db in try String.fetchOne(db, sql: "PRAGMA quick_check") }
             return result == "ok"
-        } catch {
+        } catch let error as DatabaseError where error.resultCode == .SQLITE_CORRUPT || error.resultCode == .SQLITE_NOTADB {
             return false
         }
     }

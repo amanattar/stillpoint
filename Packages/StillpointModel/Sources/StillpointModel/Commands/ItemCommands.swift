@@ -257,8 +257,10 @@ extension Store {
                 if item.kind != .todo {
                     group += try tx.liveItems(where: "trashedAt = ? AND (projectID = ? OR headingID = ?)", [trashedAt.timeIntervalSince1970, item.id, item.id])
                 }
-                // Restore parents before children so the rules see live parents.
-                for var member in group.sorted(by: { $0.kind.rawValue > $1.kind.rawValue }) {
+                // Restore parents before children (project, then headings, then to-dos)
+                // so the rules see live parents.
+                let rank: [ItemKind: Int] = [.project: 0, .heading: 1, .todo: 2]
+                for var member in group.sorted(by: { rank[$0.kind]! < rank[$1.kind]! }) {
                     member.trashedAt = nil
                     try Store.detachFromMissingParents(&member, in: tx)
                     try tx.save(member)

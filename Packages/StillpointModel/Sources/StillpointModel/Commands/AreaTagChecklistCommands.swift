@@ -31,10 +31,9 @@ extension Store {
                 guard let id else { return nil }
                 return try String.fetchOne(tx.db, sql: "SELECT sortKey FROM area WHERE id = ?", arguments: [id])
             }
-            let lower = try key(afterID), upper = try key(beforeID)
-            if let lower, let upper, lower >= upper { throw ModelError.invalidMove("neighbours out of order") }
             guard var area = try Area.fetchOne(tx.db, key: id) else { throw ModelError.notFound("area \(id)") }
-            area.sortKey = SortKey.between(lower, upper)
+            area.sortKey = try tx.boundedKeys(1, table: "area", column: "sortKey", scope: "1", [],
+                                              excluding: [id], lower: try key(afterID), upper: try key(beforeID))[0]
             try tx.save(area)
         }
     }
@@ -188,20 +187,12 @@ extension Store {
     @discardableResult
     public func addChecklistItem(to itemID: String, title: String, after afterID: String? = nil) async throws -> Committed<String> {
         try await perform("Add Checklist Item") { tx in
-            let siblings = try ChecklistItem
-                .filter(Column("itemID") == itemID && Column("deletedAt") == nil)
-                .order(Column("sortKey"))
-                .fetchAll(tx.db)
-            let lower: String?
-            let upper: String?
-            if let afterID, let index = siblings.firstIndex(where: { $0.id == afterID }) {
-                lower = siblings[index].sortKey
-                upper = index + 1 < siblings.count ? siblings[index + 1].sortKey : nil
-            } else {
-                lower = siblings.last?.sortKey
-                upper = nil
+            let lower = try afterID.flatMap {
+                try String.fetchOne(tx.db, sql: "SELECT sortKey FROM checklist_item WHERE id = ?", arguments: [$0])
             }
-            let entry = ChecklistItem(id: tx.newID(), itemID: itemID, title: title, createdAt: tx.now, sortKey: SortKey.between(lower, upper))
+            let key = try tx.boundedKeys(1, table: "checklist_item", column: "sortKey", scope: "itemID = ?", [itemID],
+                                         excluding: [], lower: lower, upper: nil)[0]
+            let entry = ChecklistItem(id: tx.newID(), itemID: itemID, title: title, createdAt: tx.now, sortKey: key)
             try tx.save(entry)
             return entry.id
         }
@@ -226,10 +217,9 @@ extension Store {
                 guard let id else { return nil }
                 return try String.fetchOne(tx.db, sql: "SELECT sortKey FROM checklist_item WHERE id = ?", arguments: [id])
             }
-            let lower = try key(afterID), upper = try key(beforeID)
-            if let lower, let upper, lower >= upper { throw ModelError.invalidMove("neighbours out of order") }
             guard var entry = try ChecklistItem.fetchOne(tx.db, key: id) else { throw ModelError.notFound("checklist item \(id)") }
-            entry.sortKey = SortKey.between(lower, upper)
+            entry.sortKey = try tx.boundedKeys(1, table: "checklist_item", column: "sortKey", scope: "itemID = ?", [entry.itemID],
+                                               excluding: [id], lower: try key(afterID), upper: try key(beforeID))[0]
             try tx.save(entry)
         }
     }
