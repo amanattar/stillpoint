@@ -60,7 +60,7 @@ public struct CountBadge: View {
         if isAlert {
             Text("\(count)")
                 .font(metrics.badge.monospacedDigit())
-                .foregroundStyle(.white)
+                .foregroundStyle(palette.onDeadline.color)
                 .padding(.horizontal, metrics.scaled(6))
                 .padding(.vertical, metrics.scaled(1))
                 .background(Capsule().fill(palette.deadline.color))

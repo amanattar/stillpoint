@@ -14,6 +14,17 @@ struct TokenTests {
     }
 
     @Test(arguments: PaletteVariant.allCases)
+    func tintedTextMeetsContrastTargets(_ variant: PaletteVariant) {
+        let p = Palette.variant(variant)
+        // The due-count badge: text on a deadline-coloured fill (small text, 4.5:1).
+        #expect(p.onDeadline.contrast(with: p.deadline) >= 4.5, "badge text in \(variant)")
+        // Deadline badge text on the background (small text, 4.5:1).
+        #expect(p.deadline.contrast(with: p.background) >= 4.5)
+        // "This Evening" section title (large semibold text, 3:1).
+        #expect(p.evening.contrast(with: p.background) >= 3)
+    }
+
+    @Test(arguments: PaletteVariant.allCases)
     func listTintsAreVisibleAsIcons(_ variant: PaletteVariant) {
         let p = Palette.variant(variant)
         let symbols: [ListSymbol] = [.inbox, .today, .evening, .upcoming, .anytime, .someday, .logbook, .trash, .deadlines]

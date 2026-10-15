@@ -36,7 +36,7 @@ public enum AppDatabase {
             for suffix in ["-wal", "-shm"] where FileManager.default.fileExists(atPath: url.path + suffix) {
                 try FileManager.default.moveItem(atPath: url.path + suffix, toPath: movedTo.path + suffix)
             }
-            throw DatabaseOpenError.corrupted(movedTo: movedTo, newestBackup: try backups.backups().first)
+            throw DatabaseOpenError.corrupted(movedTo: movedTo, newestBackup: try backups.newestHealthyBackup())
         }
 
         let pool = try DatabasePool(path: url.path)
@@ -57,7 +57,7 @@ public enum AppDatabase {
 
     /// False only for real corruption. Other failures (permissions, a locked
     /// or busy file) are rethrown: moving a healthy database aside would hide the user's data.
-    private static func passesIntegrityCheck(_ url: URL) throws -> Bool {
+    static func passesIntegrityCheck(_ url: URL) throws -> Bool {
         do {
             let queue = try DatabaseQueue(path: url.path)
             defer { try? queue.close() }

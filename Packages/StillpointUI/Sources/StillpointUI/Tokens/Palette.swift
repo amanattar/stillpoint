@@ -25,6 +25,8 @@ public struct Palette: Sendable, Equatable {
     public var logbook: RGBA
     public var trash: RGBA
     public var deadline: RGBA
+    /// Text drawn on a `deadline`-filled badge.
+    public var onDeadline: RGBA
 
     public static func variant(_ variant: PaletteVariant) -> Palette {
         switch variant {
@@ -50,7 +52,8 @@ public struct Palette: Sendable, Equatable {
         someday: RGBA(hex: 0x9C7F4F),
         logbook: RGBA(hex: 0x2A8F5E),
         trash: RGBA(hex: 0x7D7F8A),
-        deadline: RGBA(hex: 0xC92A5F)
+        deadline: RGBA(hex: 0xC92A5F),
+        onDeadline: RGBA(hex: 0xFFFFFF)
     )
 
     public static let dark = Palette(
@@ -69,7 +72,8 @@ public struct Palette: Sendable, Equatable {
         someday: RGBA(hex: 0xD2B88A),
         logbook: RGBA(hex: 0x4CC38A),
         trash: RGBA(hex: 0x9EA0AB),
-        deadline: RGBA(hex: 0xF0709A)
+        deadline: RGBA(hex: 0xF0709A),
+        onDeadline: RGBA(hex: 0x1E1C1A)
     )
 
     public static let black: Palette = {

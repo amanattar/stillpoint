@@ -32,6 +32,10 @@ final class AppModel {
     @ObservationIgnored private var pool: DatabasePool?
     @ObservationIgnored private var settingsTask: Task<Void, Never>?
 
+    /// How often a running app checks whether a daily backup is due.
+    static let backupCheckInterval: TimeInterval = 3600
+    @ObservationIgnored private(set) var backupTimer: Timer?
+
     init(location: DatabaseLocation, deviceID: String, now: @escaping @Sendable () -> Date = { Date() }, clock: DayClock) {
         self.location = location
         self.deviceID = deviceID
@@ -93,6 +97,7 @@ final class AppModel {
             store = Store(writer: pool, env: env)
             phase = .ready
             backUpIfDue()
+            scheduleBackupChecks()
             observeSettings()
         } catch DatabaseOpenError.corrupted(_, let newestBackup) {
             phase = .failed(DatabaseProblem(
@@ -109,7 +114,16 @@ final class AppModel {
         }
     }
 
-    /// Daily backup: at launch and whenever the day changes while running.
+    /// Checks hourly so a Mac left running backs up within an hour of the
+    /// 24-hour mark, not only at the next midnight.
+    private func scheduleBackupChecks() {
+        backupTimer?.invalidate()
+        backupTimer = Timer.scheduledTimer(withTimeInterval: Self.backupCheckInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.backUpIfDue() }
+        }
+    }
+
+    /// Daily backup: at launch, hourly while running (see `scheduleBackupChecks`), and when the day changes.
     private func backUpIfDue() {
         guard let pool else { return }
         do {

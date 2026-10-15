@@ -73,3 +73,27 @@ extension AppModelTests {
         #expect(!live.location.folder.path.hasSuffix("Application Support/Stillpoint"))
     }
 }
+
+extension AppModelTests {
+    /// Plan 2 final review: a Mac left running must back up every 24 hours,
+    /// not only at launch and at midnight (which gave ~39-hour gaps).
+    @Test func backsUpEvery24HoursWhileRunning() throws {
+        let clock = MovableNow()
+        let model = AppModel(
+            location: DatabaseLocation(folder: temporaryFolder()), deviceID: "test", now: { clock.now },
+            clock: DayClock(calendar: utcCalendar(), now: { clock.now }, center: NotificationCenter())
+        )
+        model.start()
+        #expect(try model.location.backups.backups().count == 1)
+        let timer = try #require(model.backupTimer)
+        #expect(timer.isValid && timer.timeInterval == AppModel.backupCheckInterval)
+        #expect(AppModel.backupCheckInterval <= 3600)
+
+        clock.advance(hours: 23)
+        timer.fire()
+        #expect(try model.location.backups.backups().count == 1)
+        clock.advance(hours: 2)
+        timer.fire()
+        #expect(try model.location.backups.backups().count == 2)
+    }
+}

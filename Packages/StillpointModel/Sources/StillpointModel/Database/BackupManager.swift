@@ -32,6 +32,12 @@ public struct BackupManager: Sendable {
             .sorted { $0.lastPathComponent > $1.lastPathComponent }
     }
 
+    /// The newest backup that passes SQLite's integrity check, so a damaged
+    /// backup is never offered for restore. Unreadable backups count as damaged.
+    public func newestHealthyBackup() throws -> URL? {
+        try backups().first { (try? AppDatabase.passesIntegrityCheck($0)) == true }
+    }
+
     /// True when there is no backup from the last 24 hours.
     public func isDue(now: Date) throws -> Bool {
         guard let newest = try backups().first else { return true }
